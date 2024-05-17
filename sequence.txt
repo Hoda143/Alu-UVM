@@ -1,0 +1,26 @@
+class Alu_seq extends uvm_sequence#(Alu_trans);
+//registeration
+  `uvm_object_utils (Alu_seq)
+
+//constructor  
+  function new(string name="Alu_seq");
+    super.new(name);
+  endfunction
+  
+// The body task is where the main functionality of the sequence is defined. 
+   virtual task body();
+     
+     repeat(40) begin //generate multiple transactions
+      
+       req=Alu_trans::type_id::create("req"); // Creates a new transaction of type Alu_trans named "req" , This is dynamically instantiated using the UVM factory.
+       start_item(req);  // Starts the transaction by notifying the sequencer that a new item is ready.
+       #3;
+       assert(req.randomize());// Randomizes the transaction.Assert ensures that the randomization is successful. If not, simulation will stop here.
+       finish_item(req); // Marks the completion of the current transaction.
+       
+     end
+
+   endtask
+
+  
+endclass

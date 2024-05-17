@@ -1,0 +1,37 @@
+`include "transaction.sv"
+`include "sequence.sv"
+`include "sequencer.sv"
+`include "driver.sv"
+`include "monitor.sv"
+
+// Agent class for the ALU, responsible for encapsulating the sequencer, driver, and monitor
+class Alu_agent extends uvm_agent;
+`uvm_component_utils(Alu_agent)
+
+
+ Alu_seqr alu_sqncr; // Sequencer for generating and managing sequences of transactions
+ Alu_driver alu_driv;// Driver for driving transactions onto the ALU interface
+ Alu_monitor alu_mon;// Monitor for observing and collecting data from the ALU interface
+
+
+ function new(string name, uvm_component parent);
+    super.new(name,parent);
+  endfunction
+  
+    // Build phase: Sets up the agent, creating instances of the sequencer, driver, and monitor
+    function void build_phase(uvm_phase phase);
+    super.build_phase(phase);
+    //ACTIVe Monitor
+    // Create instances of the sequencer, driver, and monitor
+    alu_sqncr=Alu_seqr::type_id::create("alu_sqncr",this);
+    alu_driv=Alu_driver::type_id::create("alu_driv",this);
+    alu_mon=Alu_monitor::type_id::create("alu_mon",this);
+    endfunction
+  
+//connect phase
+  function void connect_phase(uvm_phase phase);
+    super.connect_phase(phase);
+    alu_driv.seq_item_port.connect(alu_sqncr.seq_item_export);    // Connect the driver's seq_item_port to the sequencer's seq_item_export
+  endfunction
+
+endclass

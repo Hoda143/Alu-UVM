@@ -1,0 +1,51 @@
+// Monitor class responsible for observing and collecting data from the ALU interface
+class Alu_monitor extends uvm_monitor;
+  
+  `uvm_component_utils(Alu_monitor)
+  
+  virtual Alu_inf vif; // Virtual interface to the ALU. This interface is used to observe the ALU signals.
+  uvm_analysis_port#(Alu_trans) actual_scoreboard_port; // Analysis port to send collected transactions to the scoreboard
+  Alu_trans alu_trans_collected;// Variable to hold the collected transaction
+
+  function new(string name , uvm_component parent);
+   super.new(name,parent);
+   actual_scoreboard_port=new("actual_scoreboard_port",this);
+   alu_trans_collected=new();
+  endfunction
+  
+  function void build_phase(uvm_phase phase);   // Build phase: Sets up the monitor, retrieves the virtual interface from the configuration database
+    super.build_phase(phase);
+    if(!uvm_config_db#(virtual Alu_inf)::get(this,"", "vif",vif))
+      `uvm_fatal("No vif found", {"virtual interface must be set for: ",get_full_name(),".vif"});
+  endfunction
+  
+   virtual task run_phase(uvm_phase phase);  // Run phase: Main phase where the monitor operates continuously, collecting transactions from the ALU interface
+     Alu_trans item_collected;
+      
+      forever begin
+        @(posedge vif.clk);
+        alu_trans_collected.src1_t=vif.src1;
+        alu_trans_collected.src2_t=vif.src2;
+        alu_trans_collected.src3_t=vif.src3;
+        alu_trans_collected.srcCy_t=vif.srcCy;
+        alu_trans_collected.op_code_t=vif.op_code;
+        alu_trans_collected.bit_in_t=vif.bit_in;
+        alu_trans_collected.srcAc_t=vif.srcAc;
+        alu_trans_collected.des_acc_t=vif.des_acc;
+        alu_trans_collected.des2_t=vif.des2;
+        alu_trans_collected.desCy_t=vif.desCy;
+        alu_trans_collected.desOv_t=vif.desOv;
+        
+         // Clone the collected transaction
+         // alu_trans_collected.clone() creates a deep copy of the collected transaction object.
+         // $cast(item_collected, alu_trans_collected.clone()) safely casts the cloned object to Alu_trans type 
+         // and assigns it to item_collected. This ensures that the types match and the assignment is safe.
+
+        $cast(item_collected,alu_trans_collected.clone());
+
+        actual_scoreboard_port.write(alu_trans_collected); // Send the collected transaction to the analysis port
+      end
+
+  endtask
+  
+endclass

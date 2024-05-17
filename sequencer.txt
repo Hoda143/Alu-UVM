@@ -1,0 +1,12 @@
+// Defines Alu_seqr as a UVM sequencer class specifically for handling Alu_trans transactions.
+class Alu_seqr extends uvm_sequencer #(Alu_trans);
+  
+  `uvm_component_utils(Alu_seqr)   // Registers Alu_seqr with the UVM factory to enable dynamic component creation.
+  
+  
+ // Constructor
+  function new (string name,uvm_component parent);
+    super.new(name,parent);
+  endfunction
+  
+endclass

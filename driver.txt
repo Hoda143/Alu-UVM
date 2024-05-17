@@ -1,0 +1,40 @@
+// Driver class responsible for driving the ALU interface with transactions
+class Alu_driver extends uvm_driver#(Alu_trans);
+  `uvm_component_utils(Alu_driver)
+  
+  virtual Alu_inf vif; // Virtual interface to the ALU. This interface is used to drive the ALU signals.
+
+
+  function new(string name, uvm_component parent);
+    super.new(name,parent);
+  endfunction
+  
+
+  function void build_phase(uvm_phase phase); // Build phase: Sets up the driver, retrieves the virtual interface from the configuration database
+    super.build_phase(phase);
+     if(!uvm_config_db#(virtual Alu_inf)::get(this,"", "vif",vif))
+      `uvm_fatal("No vif found", {"virtual interface must be set for: ",get_full_name(),".vif"});
+  endfunction: build_phase
+  
+  virtual task run_phase(uvm_phase phase);   // Run phase: Main phase where the driver operates continuously, retrieving and driving transactions
+    forever begin
+      seq_item_port.get_next_item(req);
+      drive();
+      seq_item_port.item_done();
+    end
+  endtask
+  task drive();  // Drive task: Drives the transaction data onto the ALU interface
+     @(posedge vif.clk)
+     
+    vif.valid_in <= 1'b1;
+    vif.srcCy<=req.srcCy_t;
+    vif.srcAc<=req.srcAc_t;
+    vif.bit_in<=req.bit_in_t;
+    vif.op_code<=req.op_code_t;
+    vif.src1<=req.src1_t;
+    vif.src2<=req.src2_t;
+    vif.src3<=req.src3_t;
+    
+  endtask  
+  
+endclass

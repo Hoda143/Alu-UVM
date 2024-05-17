@@ -1,0 +1,90 @@
+// Extends uvm_sequence_item to create a UVM transaction class.
+class Alu_trans extends uvm_sequence_item;  
+ 
+  rand  bit  [7:0] src1_t;
+  rand  bit  [7:0] src2_t;
+  rand  bit  [7:0] src3_t;
+  rand  bit  [3:0] op_code_t;
+  rand bit             srcCy_t;
+  rand bit             srcAc_t;
+  rand bit         bit_in_t;
+  bit     desCy_t;
+  bit     desOv_t;
+  bit [7:0]des2_t;
+  bit [7:0]des_acc_t; 
+  bit enable_mul_t;
+  bit enable_div_t;
+  bit da_tmp_t;
+  bit da_tmp1_t;
+
+///////////////////////////CONSTRAINTS////////////////////////
+
+// Constraint to ensure src1_t is greater than src2_t
+    constraint src1_gt_src2 {
+        src1_t >= src2_t;
+    } 
+// Defines valid operation codes for the ALU. 
+   constraint valid_opcodes {
+    op_code_t inside {4'b0000, // add
+                      4'b0001, // sub
+                      4'b0010, // mul
+                      4'b0011, // div
+                      4'b0100, // da
+                      4'b0101, // not_op
+                      4'b0110, // and_op
+                      4'b0111, // xor_op
+                      4'b1000, // or_op
+                      4'b1001, // rl
+                      4'b1010, // rlc
+                      4'b1011, // rr
+                      4'b1100, // rrc
+                      4'b1101, // inc
+                      4'b1110, // xch
+                      4'b1111  // nop
+                     };
+  }
+  
+//Constrain each operand (src1, src2) to valid 8-bit values (0 to 255).
+//Ensure that the operands are not all zero simultaneously to provide diverse test scenarios.
+    constraint valid_operand {
+    src1_t inside {[0:255]};
+    src2_t inside {[0:255]};
+  
+    // Ensure at least one operand is non-zero
+    src1_t != 8'h00 || src2_t != 8'h00 ;
+} 
+      
+ //Register the member variables of the Alu_trans class with the UVM factory and automation services
+  `uvm_object_utils_begin(Alu_trans)  
+
+      `uvm_field_int(src1_t,UVM_ALL_ON) ;
+      `uvm_field_int(src2_t,UVM_ALL_ON) ;
+      `uvm_field_int(src3_t,UVM_ALL_ON) ; 
+      `uvm_field_int(op_code_t,UVM_ALL_ON) ; 
+      `uvm_field_int(srcCy_t,UVM_ALL_ON) ;       
+      `uvm_field_int(srcAc_t,UVM_ALL_ON) ; 
+      `uvm_field_int(bit_in_t,UVM_ALL_ON) ;  
+      `uvm_field_int(desCy_t,UVM_ALL_ON) ;
+      `uvm_field_int(desOv_t,UVM_ALL_ON) ; 
+      `uvm_field_int(des2_t,UVM_ALL_ON) ;
+      `uvm_field_int(des_acc_t,UVM_ALL_ON) ;
+      `uvm_field_int(enable_mul_t,UVM_ALL_ON) ;
+      `uvm_field_int(enable_div_t,UVM_ALL_ON) ;
+      `uvm_field_int(da_tmp_t,UVM_ALL_ON) ; 
+      `uvm_field_int(da_tmp1_t,UVM_ALL_ON) ;  
+  
+ `uvm_object_utils_end      
+      
+// Constructor for Alu_trans;  
+   function new(string name ="Alu_trans");
+    super.new(name);
+   endfunction
+  
+// Called after randomization; displays the values of the operands and the operation code.
+
+   function void post_randomize();
+    super.post_randomize();   
+    $display("src1 = %d, src2 = %d, src3 = %d, op_code = %b", src1_t,  src2_t, src3_t, op_code_t);  
+  endfunction
+
+endclass

@@ -1,0 +1,39 @@
+ `include "enviroment.sv"
+
+// Test class for the ALU, responsible for setting up and running the testbench
+class Alu_test extends uvm_test;
+  `uvm_component_utils(Alu_test)
+  
+  Alu_seq seq;// Instance of the ALU sequence, which defines the sequence of transactions
+  Alu_env ENV;// Instance of the ALU environment, which includes the agent, scoreboard, and coverage collector
+  
+    function new(string name= "Alu_test", uvm_component parent=null);
+     super.new(name,parent);
+    endfunction:new
+  
+    // Build phase: Sets up the test, creating instances of the sequence and environment
+    virtual function void build_phase(uvm_phase phase);
+     super.build_phase(phase);
+     seq=Alu_seq::type_id::create("seq",this);
+     ENV=Alu_env::type_id::create("ENV",this);
+    endfunction 
+  
+    // Run phase: Executes the test by starting the sequence on the environment's sequencer
+    task run_phase(uvm_phase phase);
+      super.run_phase(phase);
+      phase.raise_objection(this);
+      seq.start(ENV.agnt.alu_sqncr);
+      phase.drop_objection(this);
+
+    endtask 
+  
+    // End of elaboration phase: Prints the test topology for debugging and verification
+   virtual function void end_of_elaboration_phase(uvm_phase phase);
+     `uvm_info(get_full_name(), "Printing test topology", UVM_NONE)
+      uvm_top.print_topology();
+  endfunction
+  
+
+  
+endclass
+    	

@@ -1,0 +1,253 @@
+// Scoreboard class for the ALU, responsible for comparing expected and actual results of ALU operations
+class Alu_scoreboard extends uvm_scoreboard;
+    `uvm_component_utils(Alu_scoreboard)
+    
+
+    uvm_analysis_imp #(Alu_trans, Alu_scoreboard) actual_scoreboard_port; // Analysis port for receiving transactions from the monitor
+    Alu_trans trans_queue[$]; // Queue to hold incoming transactions for processing
+    logic [8:0] res;
+    logic overflow;
+    logic [15:0] mul;
+    logic [7:0] div;
+    logic [15:0] inc, dec;
+
+    function new(string name, uvm_component parent);
+        super.new(name, parent);
+    endfunction
+  
+    // Build phase: Sets up the scoreboard, creating the analysis port
+    function void build_phase(uvm_phase phase);
+        super.build_phase(phase);
+      actual_scoreboard_port = new("actual_scoreboard_port", this);
+    endfunction
+    // Connect phase: Currently empty but included for completeness
+    function void connect_phase(uvm_phase phase);
+        super.connect_phase(phase);
+    endfunction
+
+    
+     // Write function: Adds incoming transactions to the queue for processing
+    function void write(Alu_trans trans);
+      trans_queue.push_back(trans);
+    endfunction
+
+    
+    // Run phase: Continuously processes transactions from the queue
+    task run_phase(uvm_phase phase);
+        super.run_phase(phase);
+        forever begin
+            Alu_trans current_trans;
+            wait(trans_queue.size() != 0);// Wait until there is a transaction in the queue
+            current_trans = trans_queue.pop_front();// Get the next transaction
+            compare(current_trans);// Compare the transaction results
+        end
+      
+    endtask
+
+    
+     // Compare task: Compares the expected and actual results of ALU operations
+    task compare(Alu_trans trans);
+      `uvm_info("ALU_SB", "Received request transaction", UVM_NONE)
+        trans.print();
+      
+        case(trans.op_code_t)
+          
+          // add
+            4'b0000: begin 
+              res = (trans.src1_t + trans.src2_t + trans.srcCy_t);
+              overflow = res[7];
+            end
+          
+          // sub
+            4'b0001: begin 
+              res = (trans.src1_t - trans.src2_t - trans.srcCy_t);
+              overflow = res[7];
+            end
+          
+          
+          // mul
+            4'b0010: begin 
+              mul = (trans.src1_t * trans.src2_t);
+              res = mul[7:0];
+              trans.enable_mul_t=1'b1;
+              trans.enable_div_t=1'b0;
+              overflow = |mul[15:8]; // Overflow if any high bits are set
+              
+            end
+          
+          
+          // div
+            4'b0011: begin 
+
+              div = (trans.src1_t / trans.src2_t);
+              res = div;
+              trans.enable_mul_t=1'b0;
+              trans.enable_div_t=1'b1;
+              overflow = trans.src2_t == 0;
+               end
+          
+          // Decimal Adjustment (DA)
+            4'b0100: begin
+              
+              if(trans.srcAc_t == 1'b1 | trans.src1_t[3:0] > 4'b1001)
+              {trans.da_tmp_t, res[3:0]} = {1'b0, trans.src1_t[3:0]} + 5'b00110;
+              else 
+              {trans.da_tmp_t, res[3:0]} = {1'b0, trans.src1_t[3:0]};  
+                
+              
+              if(trans.srcCy_t | trans.da_tmp_t | trans.src1_t[7:4] > 4'b1001)
+              {trans.da_tmp1_t, res[7:4]} = {trans.srcCy_t, trans.src1_t[7:4]} + 5'b00110 + {4'b0, trans.da_tmp_t};
+              else
+              {trans.da_tmp1_t, res[7:4]} = {trans.srcCy_t, trans.src1_t[7:4]} + {4'b0, trans.da_tmp_t};
+              
+              
+              overflow = 1'b0;
+              
+            end
+           
+          
+         //Not
+			4'b0101: begin
+			
+              res   = ~(trans.src1_t);
+			  overflow = 1'b0;
+			
+			end
+          
+          //And
+          
+		4'b0110: begin
+			
+          res  = (trans.src1_t & trans.src2_t);
+				overflow = 1'b0;
+			
+			end
+          
+          
+          //xor
+			4'b0111: begin
+			
+              res = (trans.src1_t ^ trans.src2_t);
+			  overflow = 1'b0;
+			
+			end
+          
+          //Or
+			
+			4'b1000: begin
+			
+              res = (trans.src1_t | trans.src2_t);
+				overflow = 1'b0;
+			
+			end
+          
+          //RL
+								
+			4'b1001: begin
+			
+              res   = {trans.src1_t[6:0], trans.src1_t[7]};
+              trans.desCy_t = trans.srcCy_t | !trans.bit_in_t;
+			  overflow = 1'h0;
+			
+			end
+          
+          //RLC
+			
+			4'b1010: begin
+			
+              res   = {trans.src1_t[6:0], trans.srcCy_t};
+				overflow = 1'b0;
+			
+			end
+          
+          //RR
+			
+			4'b1011: begin
+			
+              res   = {trans.src1_t[0], trans.src1_t[7:1]};
+              trans.desCy_t = trans.srcCy_t & !trans.bit_in_t;
+			  overflow = 1'b0;
+			
+			end
+          
+          //RRC
+			
+			4'b1100: begin
+			
+              res  = {trans.srcCy_t, trans.src1_t[7:1]};
+			  overflow = 1'b0;
+			
+			end
+          
+          //INV
+			
+			4'b1101: begin
+			
+              inc = {trans.src2_t, trans.src1_t} + {15'h0, 1'b1};
+              dec = {trans.src2_t, trans.src1_t} - {15'h0, 1'b1};
+              
+              if(trans.srcCy_t)
+                res = dec[7:0];
+              else
+                begin
+                res = inc[7:0];
+                overflow = 1'b0;
+                end
+			
+			end
+          
+          //Exchange
+          
+          	4'b1110: begin
+              
+              if(trans.srcCy_t)
+                res = trans.src2_t;
+              else 
+                begin
+                res = {trans.src1_t[7:4],trans.src2_t[3:0]};
+                overflow = 1'b0;
+                end
+              
+            end
+          
+          
+           default: begin
+			
+				res  = trans.src1_t;
+				overflow = 1'b0;
+			
+			end
+        endcase
+   
+//check results
+if((trans.op_code_t == 4'b0010 ) || (trans.op_code_t == 4'b0011))
+  
+begin
+          
+  if(trans.des2_t != res[7:0])
+            `uvm_error("COMPARE", $sformatf("Transaction failed! Actual=%d, Expected=%d", trans.des2_t, res[7:0]))
+          else
+            `uvm_info("COMPARE", $sformatf("Transaction Passed! ACT=%d, EXP=%d", trans.des2_t, res[7:0]), UVM_LOW)
+                 
+        end
+		else begin
+          
+          if(trans.des_acc_t != res[7:0])
+            `uvm_error("COMPARE", $sformatf("Transaction failed! Actual=%d, Expected=%d", trans.des_acc_t, res[7:0]))
+          else
+            `uvm_info("COMPARE", $sformatf("Transaction Passed! ACT=%d, EXP=%d", trans.des_acc_t, res[7:0]), UVM_LOW)
+          
+end
+         
+
+  endtask
+  
+    
+endclass
+  
+  
+  
+  
+  
+  
+  

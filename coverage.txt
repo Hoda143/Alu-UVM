@@ -1,0 +1,63 @@
+class Alu_coverage extends uvm_subscriber#(Alu_trans);
+  `uvm_component_utils(Alu_coverage)
+
+  Alu_trans tr;
+  covergroup cg;
+    
+    // Coverpoint for the operation code
+    op_code_cp: coverpoint tr.op_code_t {
+      bins add = {4'b0000};  
+      bins sub = {4'b0001};  
+      bins da ={4'b0100};
+      bins not_op={4'b0101};
+      bins and_op={4'b0110};
+      bins xor_op={4'b0111};
+      bins or_op={4'b1000};
+      bins rl={4'b1001};
+      bins rr={4'b1011};
+      bins rrc={4'b1100};
+      bins inc={ 4'b1101};
+      bins xch={4'b1110};
+   
+      
+      bins others = default; // All other operation codes
+    }
+
+ src1_cp: coverpoint tr.src1_t {
+   bins smalll = {[1:50]};      // Correct range specification
+   bins largee = {[51:255]};    // Correct range specification
+}
+
+src2_cp: coverpoint tr.src2_t {
+
+  bins smalll = {[1:50]};      // Correct range specification
+  bins largee = {[51:255]};    // Correct range specification
+}
+
+    // Coverpoint for the output flags
+    output_flags_cp: coverpoint {tr.desCy_t,  tr.desOv_t} {
+      bins all_flags = {[0:7]}; // Combining the three output flags into one coverpoint
+    }
+
+  endgroup
+
+  function new(string name = "Alu_coverage", uvm_component parent=null);
+    super.new(name, parent);
+    cg = new();
+  endfunction
+
+  // Collect coverage whenever a new transaction is received
+  function void write(Alu_trans t);
+    tr = t;
+    cg.sample();
+  endfunction
+
+ function void report_phase(uvm_phase phase);
+  super.report_phase(phase);
+  
+  // Use get_coverage() to retrieve the coverage percentage and format it for display
+  `uvm_info(get_full_name(), $sformatf("Coverage results: %0.2f%%", cg.get_coverage()), UVM_LOW);
+endfunction
+
+
+endclass
